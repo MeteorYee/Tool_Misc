@@ -26,6 +26,7 @@ class TfIdfGenerator(object):
         if os.path.exists(idf_dict_path):
             self._load_idf_dict()
         else:
+            print("idf_dict doesn't exist, needs to be generated")
             self._idf_dict = None
 
 
@@ -63,7 +64,6 @@ class TfIdfGenerator(object):
             tfidf_res.append((tk, tfreq, idf, tfreq*idf))
 
         return tfidf_res
-
 
 
     # Calculate the IDF scores, given that we've already known the document
@@ -162,7 +162,7 @@ if __name__ == '__main__':
     with open(input_file, 'r') as fin:
         tfidf.get_idf_score(fin)
 
-    # calculate the tf-idf scores fot the given file
+    # calculate the tf-idf scores for the given file
     tfidf_res = tfidf(input_file)
     assert tfidf_res != None
     # sort it by tf-idf score in a descending order

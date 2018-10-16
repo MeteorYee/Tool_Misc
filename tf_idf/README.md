@@ -12,7 +12,7 @@ tfidf = TfIdfGenerator(idf_dict_path)
 with open(input_file, 'r') as fin:
     tfidf.get_idf_score(fin)
 
-# calculate the tf-idf scores fot the given file
+# calculate the tf-idf scores for the given file
 tfidf_res = tfidf(input_file)
 assert tfidf_res != None
 # sort it by tf-idf score in a descending order
