@@ -20,8 +20,9 @@ import pickle
 
 
 class TfIdfGenerator(object):
-    def __init__(self, idf_dict_path):
+    def __init__(self, idf_dict_path, stop_words_path = None):
         self._idf_dict_path = idf_dict_path
+        self._stop_set = set([])
 
         if os.path.exists(idf_dict_path):
             self._load_idf_dict()
@@ -29,14 +30,22 @@ class TfIdfGenerator(object):
             print("idf_dict doesn't exist, needs to be generated")
             self._idf_dict = None
 
+        if stop_words_path != None:
+            assert os.path.exists(stop_words_path)
+            self._stop_words_path = stop_words_path
+            self._load_stop_words()
+
 
     # Parameters:
     # @in_file: The input file. The text in the file should be TOKENIZED ideally.
+    # 
+    # sent2doc: whether to view sentence as document, if it is, we give the average
+    #           result of the TF scores.
     #
     # Returns:
     # tfidf_res: the result will be fed into this list, in a form of:
     # [(token, TF, IDF, TF-IDF), ... ]
-    def __call__(self, in_file):
+    def __call__(self, in_file, sent2doc = False):
         if self._idf_dict == None:
             print("We need IDF scores.")
             print("Try to use the method to get one.")
@@ -45,17 +54,42 @@ class TfIdfGenerator(object):
         assert os.path.exists(in_file)
         cnt_dict = defaultdict(int)
         total_tk = 0
+        total_sent = 0
         with open(in_file, 'r') as fin:
-            for line in fin:
-                tk_list = line.strip().split()
-                for tk in tk_list:
-                    cnt_dict[tk] += 1
-                    total_tk += 1
+            if sent2doc:
+                for line in fin:
+                    tk_list = line.strip().split()
+                    sent_len = len(tk_list)
+                    sent_tk_dict = defaultdict(int)
+                    for tk in tk_list:
+                        sent_tk_dict[tk.lower()] += 1
+                    for tk, tcnt in sent_tk_dict.items():
+                        # int / int = float, __future__.division already imported
+                        cnt_dict[tk] += tcnt / sent_len
+                    total_sent += 1
+            else:
+                for line in fin:
+                    tk_list = line.strip().split()
+                    for tk in tk_list:
+                        cnt_dict[tk.lower()] += 1
+                        total_tk += 1
 
         tfidf_res = []
+        if sent2doc:
+            denom = total_sent
+        else:
+            denom = total_tk
+
         for tk, tcnt in cnt_dict.items():
+            # filter the stop words
+            if tk in self._stop_set:
+                continue
+            # filter the numbers, just positive numbers though
+            if tk.isdigit():
+                continue
+
             # int / int = float, __future__.division already imported
-            tfreq = tcnt / total_tk
+            tfreq = tcnt / denom
             if tk in self._idf_dict:
                 idf = self._idf_dict[tk]
             else:
@@ -90,6 +124,17 @@ class TfIdfGenerator(object):
         print("Load idf_dict from:", self._idf_dict_path)
         with open(self._idf_dict_path, 'rb') as fin:
             self._idf_dict = pickle.load(fin)
+
+
+    # load the stop words
+    def _load_stop_words(self):
+        print("Try to use the stop words in:", self._stop_words_path)
+        with open(self._stop_words_path, 'r') as fin:
+            for words in fin:
+                for wd in words.strip().split(','):
+                    self._stop_set.add(wd)
+        # add the comma
+        self._stop_set.add(',')
 
 
     # Parameters:
@@ -150,20 +195,27 @@ if __name__ == '__main__':
         help = """The path to the IDF dict, it should be a pickle dumped object.
             If it doesn't exist, a new idf_dict will be generated to this path.""")
 
+    parser.add_argument(
+        "--stop_words_path",
+        type = str,
+        default = "./stop_words_en.csv",
+        help = """The path to the stop words, a csv file.""")
+
     args = parser.parse_args()
 
     # demo code
     input_file = args.input_file
     output_file = args.output_file
     idf_dict_path = args.idf_dict_path
+    stop_words_path = args.stop_words_path
 
-    tfidf = TfIdfGenerator(idf_dict_path)
+    tfidf = TfIdfGenerator(idf_dict_path, stop_words_path)
     # generate the idf_dict, if the idf_dict is already there, skip this step
-    with open(input_file, 'r') as fin:
-        tfidf.get_idf_score(fin)
+    # with open(input_file, 'r') as fin:
+    #     tfidf.get_idf_score(fin)
 
     # calculate the tf-idf scores for the given file
-    tfidf_res = tfidf(input_file)
+    tfidf_res = tfidf(input_file, sent2doc = True)
     assert tfidf_res != None
     # sort it by tf-idf score in a descending order
     tfidf_res.sort(key = lambda x : x[3], reverse = True)
