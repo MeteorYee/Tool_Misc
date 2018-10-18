@@ -6,7 +6,7 @@
 #
 # Description: Take a document and get the corresponding TF-IDF
 #
-# Last Modified at: 10/16/2018, by: Xingyu Yi
+# Last Modified at: 10/18/2018, by: Xingyu Yi
 
 
 from __future__ import division
@@ -151,7 +151,7 @@ class TfIdfGenerator(object):
             # get the unqiue tokens in the doc
             tk_set = set([])
             for tk in tk_list:
-                tk_set.add(tk)
+                tk_set.add(tk.lower())
 
             for tk in tk_set:
                 self._idf_dict[tk] += 1
